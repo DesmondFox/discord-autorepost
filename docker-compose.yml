@@ -1,8 +1,6 @@
 services:
   bot:
     build: .
-    ports:
-      - "5003:5003"
     env_file:
       - .env
     restart: always
