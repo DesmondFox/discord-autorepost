@@ -16,9 +16,10 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 
 @client.event
-async def on_ready():
-    print(f"Logged in as {client.user}")
-
+async def on_ready(): 
+    logging.info("Logged in to Discord as %s", client.user)
+    
+ 
 @client.event
 async def on_message(message):
     if message.author.bot:
@@ -32,11 +33,12 @@ async def on_message(message):
     for i, att in enumerate(message.attachments):
         url = att.url
         filename = att.filename
+        has_spoiler = filename.startswith("SPOILER_")
         
         if att.content_type and "image" in att.content_type:
-            media.append(InputMediaPhoto(media=url, caption=content if i == 0 else None))
+            media.append(InputMediaPhoto(media=url, caption=content if i == 0 else None, has_spoiler=has_spoiler))
         elif att.content_type and "video" in att.content_type:
-            media.append(InputMediaVideo(media=url, caption=content if i == 0 else None))
+            media.append(InputMediaVideo(media=url, caption=content if i == 0 else None, has_spoiler=has_spoiler))
         else:
             documents.append((url, filename))
     try:
