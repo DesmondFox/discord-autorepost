@@ -121,7 +121,7 @@ async def on_message(message: discord.Message) -> None:
         file_objects.append(file_object)
         if ext in ["gif", "webm"]:
             media.append(InputMediaAnimation(media=file_object, caption=content if i == 0 else None, has_spoiler=has_spoiler))
-        if content_type and "image" in content_type:
+        elif content_type and "image" in content_type:
             media.append(InputMediaPhoto(media=file_object, caption=content if i == 0 else None, has_spoiler=has_spoiler))
         elif content_type and "video" in content_type:
             media.append(InputMediaVideo(media=file_object, caption=content if i == 0 else None, has_spoiler=has_spoiler))
@@ -130,7 +130,18 @@ async def on_message(message: discord.Message) -> None:
             
     try:
         if media:
-            await tg_bot.send_media_group(chat_id=str(TG_CHAT_ID), media=media)
+            if len(media) == 1:
+                one_media = media[0]
+                if isinstance(one_media, InputMediaAnimation):
+                    await tg_bot.send_animation(chat_id=str(TG_CHAT_ID), animation=one_media.media, caption=content, has_spoiler=has_spoiler)
+                elif isinstance(one_media, InputMediaPhoto):
+                    await tg_bot.send_photo(chat_id=str(TG_CHAT_ID), photo=one_media.media, caption=content, has_spoiler=has_spoiler)
+                elif isinstance(one_media, InputMediaVideo):
+                    await tg_bot.send_video(chat_id=str(TG_CHAT_ID), video=one_media.media, caption=content, has_spoiler=has_spoiler)
+                else:
+                    await tg_bot.send_document(chat_id=str(TG_CHAT_ID), document=one_media.media, filename=one_media.filename, caption=content)
+            else:
+                await tg_bot.send_media_group(chat_id=str(TG_CHAT_ID), media=media)
         elif content:
             await tg_bot.send_message(chat_id=str(TG_CHAT_ID), text=content)
         
