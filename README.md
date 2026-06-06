@@ -1,19 +1,19 @@
 # Discord Repost Bot
 
-A small Python bot that reposts messages from selected Discord channels to a Telegram chat.
+A small Python bot that reposts messages from selected Discord channels to Telegram chats.
 
-The bot listens for new Discord messages, checks that the message came from an allowed channel, then forwards the text and attachments to Telegram. It supports photos, videos, GIF/WebM animations, and other files as Telegram documents.
+The bot listens for new Discord messages, checks that the message came from a configured NSFW or SFW channel, then forwards the text and attachments to Telegram. NSFW Discord channels repost to the NSFW Telegram chat. SFW Discord channels repost to both the NSFW and SFW Telegram chats. It supports photos, videos, GIF/WebM animations, and other files as Telegram documents.
 
 ## Features
 
-- Reposts Discord text messages to Telegram.
-- Reposts Discord attachments to Telegram.
+- Reposts Discord text messages to configured Telegram chats.
+- Reposts Discord attachments to configured Telegram chats.
 - Sends images as Telegram photos.
 - Sends videos as Telegram videos.
 - Sends GIF and WebM files as Telegram animations.
 - Sends unsupported or large image files as Telegram documents.
 - Preserves Discord spoiler attachments when the filename starts with `SPOILER_`.
-- Restricts reposting to configured Discord channel IDs.
+- Routes configured Discord NSFW and SFW channel IDs to the right Telegram chats.
 - Cleans downloaded temporary files after sending.
 - Can run locally with Python or in Docker Compose.
 
@@ -41,20 +41,22 @@ The bot listens for new Discord messages, checks that the message came from an a
 1. `main.py` loads configuration and starts the Discord client.
 2. `bot/config.py` reads environment variables from `.env` and validates required values.
 3. The Discord client starts with `message_content` intent enabled.
-4. When a non-bot message arrives, `bot/repost_service.py` checks whether the Discord channel ID is in `ALLOWED_CHANNEL_IDS`.
-5. If the message has no attachments, the bot sends the text to Telegram.
-6. If the message has attachments, `bot/attachment_downloader.py` downloads them into the local `temp/` directory.
-7. `bot/media_classifier.py` classifies each downloaded file by content type, extension, and size:
+4. When a non-bot message arrives, `bot/repost_service.py` checks whether the Discord channel ID is in `DISCORD_NSFW_CHANNEL_IDS` or `DISCORD_SFW_CHANNEL_IDS`.
+5. If the message is from an NSFW Discord channel, the bot sends it to the NSFW Telegram chat.
+6. If the message is from an SFW Discord channel, the bot sends it to both the NSFW and SFW Telegram chats.
+7. If the message has no attachments, the bot sends the text to the target Telegram chats.
+8. If the message has attachments, `bot/attachment_downloader.py` downloads them into the local `temp/` directory.
+9. `bot/media_classifier.py` classifies each downloaded file by content type, extension, and size:
    - images become Telegram photos;
    - videos become Telegram videos;
    - `gif` and `webm` files become Telegram animations;
    - other files become Telegram documents.
-8. Telegram size limits are checked before sending:
+10. Telegram size limits are checked before sending:
    - photos: 10 MB;
    - videos: 50 MB;
    - documents: 50 MB.
-9. `bot/telegram_sender.py` sends the text, media, and documents to Telegram.
-10. After sending, downloaded files are removed from `temp/`.
+11. `bot/telegram_sender.py` sends the text, media, and documents to each target Telegram chat.
+12. After sending, downloaded files are removed from `temp/`.
 
 If an attachment cannot be downloaded, the bot tries to send the original Discord attachment URL directly to Telegram as a fallback.
 
@@ -63,7 +65,7 @@ If an attachment cannot be downloaded, the bot tries to send the original Discor
 - Python 3.11 or newer.
 - A Discord bot token.
 - A Telegram bot token.
-- A Telegram chat ID.
+- NSFW and SFW Telegram chat IDs.
 - Discord Message Content Intent enabled for the bot in the Discord Developer Portal.
 
 ## Configuration
@@ -78,9 +80,11 @@ Set these values:
 
 ```env
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-TELEGRAM_CHAT_ID=your_telegram_chat_id
+TELEGRAM_NSFW_CHAT_ID=your_nsfw_telegram_chat_id
+TELEGRAM_SFW_CHAT_ID=your_sfw_telegram_chat_id
 DISCORD_BOT_TOKEN=your_discord_bot_token
-ALLOWED_CHANNEL_IDS=123456789012345678,987654321098765432
+DISCORD_NSFW_CHANNEL_IDS=123456789012345678
+DISCORD_SFW_CHANNEL_IDS=987654321098765432
 ```
 
 ### Environment Variables
@@ -88,9 +92,11 @@ ALLOWED_CHANNEL_IDS=123456789012345678,987654321098765432
 | Variable | Required | Description |
 | --- | --- | --- |
 | `TELEGRAM_BOT_TOKEN` | Yes | Token for the Telegram bot that sends messages. |
-| `TELEGRAM_CHAT_ID` | Yes | Target Telegram chat, group, channel, or topic-compatible chat ID. |
+| `TELEGRAM_NSFW_CHAT_ID` | Yes | Target Telegram chat, group, channel, or topic-compatible chat ID for NSFW reposts. |
+| `TELEGRAM_SFW_CHAT_ID` | Yes | Target Telegram chat, group, channel, or topic-compatible chat ID for SFW reposts. |
 | `DISCORD_BOT_TOKEN` | Yes | Token for the Discord bot that reads messages. |
-| `ALLOWED_CHANNEL_IDS` | No | Comma-separated list of Discord channel IDs to repost from. If empty, no channels are reposted. |
+| `DISCORD_NSFW_CHANNEL_IDS` | No | Comma-separated list of Discord NSFW channel IDs. Messages from these channels repost only to the NSFW Telegram chat. |
+| `DISCORD_SFW_CHANNEL_IDS` | No | Comma-separated list of Discord SFW channel IDs. Messages from these channels repost to both Telegram chats. |
 
 Do not commit real `.env` files or tokens.
 
@@ -145,7 +151,8 @@ docker compose down
 Check that all required variables are set in `.env`:
 
 - `TELEGRAM_BOT_TOKEN`
-- `TELEGRAM_CHAT_ID`
+- `TELEGRAM_NSFW_CHAT_ID`
+- `TELEGRAM_SFW_CHAT_ID`
 - `DISCORD_BOT_TOKEN`
 
 ### Discord messages are not reposted
@@ -155,7 +162,7 @@ Check these points:
 - The Discord bot is invited to the server.
 - The bot has access to the target channel.
 - Message Content Intent is enabled in the Discord Developer Portal.
-- The channel ID is present in `ALLOWED_CHANNEL_IDS`.
+- The channel ID is present in `DISCORD_NSFW_CHANNEL_IDS` or `DISCORD_SFW_CHANNEL_IDS`.
 - The message was not sent by another bot.
 
 ### Attachments are missing in Telegram

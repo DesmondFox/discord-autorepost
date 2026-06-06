@@ -13,19 +13,24 @@ from .telegram_sender import TelegramSender
 class RepostService:
     def __init__(
         self,
-        telegram_sender: TelegramSender,
-        allowed_channel_ids: set[int],
+        nsfw_sender: TelegramSender,
+        sfw_sender: TelegramSender,
+        nsfw_channel_ids: set[int],
+        sfw_channel_ids: set[int],
         temp_dir: str,
     ):
-        self.telegram_sender = telegram_sender
-        self.allowed_channel_ids = allowed_channel_ids
+        self.nsfw_sender = nsfw_sender
+        self.sfw_sender = sfw_sender
+        self.nsfw_channel_ids = nsfw_channel_ids
+        self.sfw_channel_ids = sfw_channel_ids
         self.temp_dir = temp_dir
 
     async def handle_message(self, message: discord.Message) -> None:
         if message.author.bot:
             return
 
-        if message.channel.id not in self.allowed_channel_ids:
+        target_senders = self._target_senders_for_channel(message.channel.id)
+        if not target_senders:
             return
 
         if message.type == discord.MessageType.thread_starter_message:
@@ -34,17 +39,47 @@ class RepostService:
 
         content = message.content or ""
         if not message.attachments:
-            await self.telegram_sender.send_text(content)
+            for sender in target_senders:
+                await sender.send_text(content)
             return
 
         local_files = await download_attachments_to_temp_dir(message.attachments, self.temp_dir)
         if not local_files and message.attachments:
-            await self.telegram_sender.send_attachment_urls(message.attachments, content)
+            for sender in target_senders:
+                await sender.send_attachment_urls(message.attachments, content)
             return
 
-        media, documents, file_objects = self._prepare_files(local_files, content)
-        await self.telegram_sender.send_media_and_documents(media, documents, content, file_objects)
-        await remove_downloaded_files(local_files, self.temp_dir)
+        try:
+            for sender in target_senders:
+                media, documents, file_objects = self._prepare_files(local_files, content)
+                await sender.send_media_and_documents(media, documents, content, file_objects)
+        finally:
+            await remove_downloaded_files(local_files, self.temp_dir)
+
+    def _target_senders_for_channel(self, channel_id: int) -> list[TelegramSender]:
+        target_senders = []
+
+        if channel_id in self.nsfw_channel_ids:
+            target_senders.append(self.nsfw_sender)
+
+        if channel_id in self.sfw_channel_ids:
+            target_senders.extend([self.nsfw_sender, self.sfw_sender])
+
+        return self._unique_senders(target_senders)
+
+    def _unique_senders(self, senders: list[TelegramSender]) -> list[TelegramSender]:
+        unique_senders = []
+        seen_ids = set()
+
+        for sender in senders:
+            sender_id = id(sender)
+            if sender_id in seen_ids:
+                continue
+
+            seen_ids.add(sender_id)
+            unique_senders.append(sender)
+
+        return unique_senders
 
     def _prepare_files(self, local_files: list[LocalFile], content: str) -> tuple[list, list[tuple], list]:
         media = []

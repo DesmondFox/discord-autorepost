@@ -26,13 +26,47 @@ def test_load_config() -> None:
     config = load_config(
         {
             "TELEGRAM_BOT_TOKEN": "telegram-token",
-            "TELEGRAM_CHAT_ID": "telegram-chat",
+            "TELEGRAM_NSFW_CHAT_ID": "telegram-nsfw-chat",
+            "TELEGRAM_SFW_CHAT_ID": "telegram-sfw-chat",
             "DISCORD_BOT_TOKEN": "discord-token",
-            "ALLOWED_CHANNEL_IDS": "123,456",
+            "DISCORD_NSFW_CHANNEL_IDS": "123",
+            "DISCORD_SFW_CHANNEL_IDS": "456",
         }
     )
 
     assert config.telegram_bot_token == "telegram-token"
-    assert config.telegram_chat_id == "telegram-chat"
+    assert config.telegram_nsfw_chat_id == "telegram-nsfw-chat"
+    assert config.telegram_sfw_chat_id == "telegram-sfw-chat"
     assert config.discord_bot_token == "discord-token"
-    assert config.allowed_channel_ids == {123, 456}
+    assert config.discord_nsfw_channel_ids == {123}
+    assert config.discord_sfw_channel_ids == {456}
+
+
+def test_load_config_allows_empty_discord_channel_lists() -> None:
+    config = load_config(
+        {
+            "TELEGRAM_BOT_TOKEN": "telegram-token",
+            "TELEGRAM_NSFW_CHAT_ID": "telegram-nsfw-chat",
+            "TELEGRAM_SFW_CHAT_ID": "telegram-sfw-chat",
+            "DISCORD_BOT_TOKEN": "discord-token",
+            "DISCORD_NSFW_CHANNEL_IDS": "",
+            "DISCORD_SFW_CHANNEL_IDS": "",
+        }
+    )
+
+    assert config.discord_nsfw_channel_ids == set()
+    assert config.discord_sfw_channel_ids == set()
+
+
+def test_load_config_rejects_invalid_discord_channel_id() -> None:
+    with pytest.raises(ValueError):
+        load_config(
+            {
+                "TELEGRAM_BOT_TOKEN": "telegram-token",
+                "TELEGRAM_NSFW_CHAT_ID": "telegram-nsfw-chat",
+                "TELEGRAM_SFW_CHAT_ID": "telegram-sfw-chat",
+                "DISCORD_BOT_TOKEN": "discord-token",
+                "DISCORD_NSFW_CHANNEL_IDS": "123",
+                "DISCORD_SFW_CHANNEL_IDS": "not-a-channel",
+            }
+        )

@@ -20,12 +20,14 @@ This repository contains a Python Discord-to-Telegram repost bot.
 Required environment variables:
 
 - `TELEGRAM_BOT_TOKEN`
-- `TELEGRAM_CHAT_ID`
+- `TELEGRAM_NSFW_CHAT_ID`
+- `TELEGRAM_SFW_CHAT_ID`
 - `DISCORD_BOT_TOKEN`
 
 Optional environment variable:
 
-- `ALLOWED_CHANNEL_IDS` as a comma-separated list of Discord channel IDs.
+- `DISCORD_NSFW_CHANNEL_IDS` as a comma-separated list of Discord NSFW channel IDs.
+- `DISCORD_SFW_CHANNEL_IDS` as a comma-separated list of Discord SFW channel IDs.
 
 Do not print, commit, or expose real values from `.env` or `.env2`.
 
@@ -63,5 +65,5 @@ docker compose logs -f bot
 - Keep secrets out of documentation and logs.
 - Preserve Discord spoiler support for filenames that start with `SPOILER_`.
 - Preserve Telegram size checks unless intentionally changing file handling.
-- `ALLOWED_CHANNEL_IDS` is parsed as integers. Invalid values will raise at startup.
+- Discord channel ID lists are parsed as integers. Invalid values will raise at startup.
 - There is currently no automated test suite. For behavior changes, document manual test coverage in the final response.

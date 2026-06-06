@@ -25,20 +25,27 @@ def main() -> None:
         sys.exit(1)
 
     client = create_discord_client()
-    telegram_sender = TelegramSender(
+    nsfw_telegram_sender = TelegramSender(
         bot=Bot(token=config.telegram_bot_token),
-        chat_id=config.telegram_chat_id,
+        chat_id=config.telegram_nsfw_chat_id,
+    )
+    sfw_telegram_sender = TelegramSender(
+        bot=Bot(token=config.telegram_bot_token),
+        chat_id=config.telegram_sfw_chat_id,
     )
     repost_service = RepostService(
-        telegram_sender=telegram_sender,
-        allowed_channel_ids=config.allowed_channel_ids,
+        nsfw_sender=nsfw_telegram_sender,
+        sfw_sender=sfw_telegram_sender,
+        nsfw_channel_ids=config.discord_nsfw_channel_ids,
+        sfw_channel_ids=config.discord_sfw_channel_ids,
         temp_dir=config.temp_dir,
     )
 
     @client.event
     async def on_ready() -> None:
         logging.info("Logged in to Discord as %s", client.user)
-        logging.info("Allowed channels: %s", config.allowed_channel_ids)
+        logging.info("NSFW Discord channels: %s", config.discord_nsfw_channel_ids)
+        logging.info("SFW Discord channels: %s", config.discord_sfw_channel_ids)
 
     @client.event
     async def on_message(message: discord.Message) -> None:

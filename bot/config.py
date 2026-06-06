@@ -15,9 +15,11 @@ class ConfigError(ValueError):
 @dataclass(frozen=True)
 class BotConfig:
     telegram_bot_token: str
-    telegram_chat_id: str
+    telegram_nsfw_chat_id: str
+    telegram_sfw_chat_id: str
     discord_bot_token: str
-    allowed_channel_ids: set[int]
+    discord_nsfw_channel_ids: set[int]
+    discord_sfw_channel_ids: set[int]
     temp_dir: str = TEMP_DIR
 
 
@@ -41,7 +43,9 @@ def load_config(env: Mapping[str, str | None] | None = None) -> BotConfig:
 
     return BotConfig(
         telegram_bot_token=require_env(source, "TELEGRAM_BOT_TOKEN"),
-        telegram_chat_id=require_env(source, "TELEGRAM_CHAT_ID"),
+        telegram_nsfw_chat_id=require_env(source, "TELEGRAM_NSFW_CHAT_ID"),
+        telegram_sfw_chat_id=require_env(source, "TELEGRAM_SFW_CHAT_ID"),
         discord_bot_token=require_env(source, "DISCORD_BOT_TOKEN"),
-        allowed_channel_ids=parse_allowed_channel_ids(source.get("ALLOWED_CHANNEL_IDS")),
+        discord_nsfw_channel_ids=parse_allowed_channel_ids(source.get("DISCORD_NSFW_CHANNEL_IDS")),
+        discord_sfw_channel_ids=parse_allowed_channel_ids(source.get("DISCORD_SFW_CHANNEL_IDS")),
     )
