@@ -10,6 +10,9 @@ from .media_classifier import TelegramFileKind, classify_file
 from .telegram_sender import TelegramSender
 
 
+logger = logging.getLogger(__name__)
+
+
 class RepostService:
     def __init__(
         self,
@@ -29,13 +32,27 @@ class RepostService:
         if message.author.bot:
             return
 
-        target_senders = self._target_senders_for_channel(message.channel.id)
+        channel_id = message.channel.id
+        message_id = getattr(message, "id", "unknown")
+        author_id = getattr(message.author, "id", "unknown")
+        attachment_count = len(message.attachments)
+
+        target_senders = self._target_senders_for_channel(channel_id)
         if not target_senders:
             return
 
         if message.type == discord.MessageType.thread_starter_message:
-            logging.info("Ignoring thread creation message")
+            logger.info("Ignoring thread creation message id=%s channel_id=%s", message_id, channel_id)
             return
+
+        logger.info(
+            "Handling Discord message id=%s channel_id=%s author_id=%s attachments=%d targets=%d",
+            message_id,
+            channel_id,
+            author_id,
+            attachment_count,
+            len(target_senders),
+        )
 
         content = message.content or ""
         if not message.attachments:
@@ -87,7 +104,7 @@ class RepostService:
         file_objects = []
 
         for index, local_file in enumerate(local_files):
-            logging.info(
+            logger.info(
                 "Processing file %d: %s (content_type: %s, has_spoiler: %s)",
                 index + 1,
                 local_file.filename,
@@ -96,15 +113,15 @@ class RepostService:
             )
 
             if not os.path.exists(local_file.path):
-                logging.error("File not found: %s", local_file.path)
+                logger.error("File not found: %s", local_file.path)
                 continue
 
             file_size = os.path.getsize(local_file.path)
-            logging.info("File size: %d bytes", file_size)
+            logger.info("File size: %d bytes", file_size)
             classification = classify_file(local_file.filename, local_file.content_type, file_size)
 
             if classification.kind == TelegramFileKind.SKIP:
-                logging.error("%s: %s", classification.reason, local_file.filename)
+                logger.error("%s: %s", classification.reason, local_file.filename)
                 continue
 
             file_object = open(local_file.path, "rb")
@@ -112,7 +129,7 @@ class RepostService:
             caption = content if index == 0 else None
 
             if classification.kind == TelegramFileKind.ANIMATION:
-                logging.info("Adding as animation: %s", local_file.filename)
+                logger.info("Adding as animation: %s", local_file.filename)
                 media.append(
                     InputMediaAnimation(
                         media=file_object,
@@ -121,7 +138,7 @@ class RepostService:
                     )
                 )
             elif classification.kind == TelegramFileKind.PHOTO:
-                logging.info("Adding as photo: %s", local_file.filename)
+                logger.info("Adding as photo: %s", local_file.filename)
                 media.append(
                     InputMediaPhoto(
                         media=file_object,
@@ -130,7 +147,7 @@ class RepostService:
                     )
                 )
             elif classification.kind == TelegramFileKind.VIDEO:
-                logging.info("Adding as video: %s", local_file.filename)
+                logger.info("Adding as video: %s", local_file.filename)
                 media.append(
                     InputMediaVideo(
                         media=file_object,
@@ -140,8 +157,8 @@ class RepostService:
                 )
             else:
                 if classification.reason:
-                    logging.warning("%s: %s", classification.reason, local_file.filename)
-                logging.info("Adding as document: %s", local_file.filename)
+                    logger.warning("%s: %s", classification.reason, local_file.filename)
+                logger.info("Adding as document: %s", local_file.filename)
                 documents.append((file_object, local_file.filename))
 
         return media, documents, file_objects

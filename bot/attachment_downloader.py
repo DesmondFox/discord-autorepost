@@ -7,8 +7,11 @@ from .local_file import LocalFile
 from .media_classifier import is_spoiler_filename
 
 
+logger = logging.getLogger(__name__)
+
+
 async def download_attachments_to_temp_dir(attachments, temp_dir: str) -> list[LocalFile]:
-    logging.info("Downloading %d attachments to temp directory: %s/", len(attachments), temp_dir)
+    logger.info("Downloading %d attachments to temp directory: %s/", len(attachments), temp_dir)
     os.makedirs(temp_dir, exist_ok=True)
     local_files: list[LocalFile] = []
 
@@ -16,7 +19,7 @@ async def download_attachments_to_temp_dir(attachments, temp_dir: str) -> list[L
     async with aiohttp.ClientSession(timeout=timeout) as session:
         for index, attachment in enumerate(attachments):
             try:
-                logging.info(
+                logger.info(
                     "Downloading attachment %d/%d: %s (size: %d bytes, content_type: %s)",
                     index + 1,
                     len(attachments),
@@ -27,7 +30,7 @@ async def download_attachments_to_temp_dir(attachments, temp_dir: str) -> list[L
 
                 async with session.get(attachment.url) as response:
                     if response.status != 200:
-                        logging.error(
+                        logger.error(
                             "Failed to download attachment %s: HTTP %d",
                             attachment.filename,
                             response.status,
@@ -40,7 +43,7 @@ async def download_attachments_to_temp_dir(attachments, temp_dir: str) -> list[L
                         file.write(content)
 
                 if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-                    logging.error(
+                    logger.error(
                         "Failed to save attachment %s: file is empty or doesn't exist",
                         attachment.filename,
                     )
@@ -54,24 +57,26 @@ async def download_attachments_to_temp_dir(attachments, temp_dir: str) -> list[L
                         has_spoiler=is_spoiler_filename(attachment.filename),
                     )
                 )
-                logging.info(
+                logger.info(
                     "Successfully downloaded attachment %s (%d bytes)",
                     attachment.filename,
                     os.path.getsize(file_path),
                 )
             except Exception as error:
-                logging.error("Error downloading attachment %s: %s", attachment.filename, error)
-                logging.error("Exception details:", exc_info=True)
+                logger.exception("Error downloading attachment %s: %s", attachment.filename, error)
 
-    logging.info("Successfully downloaded %d/%d attachments", len(local_files), len(attachments))
+    logger.info("Successfully downloaded %d/%d attachments", len(local_files), len(attachments))
     return local_files
 
 
 async def remove_downloaded_files(local_files: list[LocalFile], temp_dir: str) -> None:
-    logging.info("Removing downloaded files from temp directory: %s/", temp_dir)
-    try:
-        for local_file in local_files:
+    logger.info("Removing %d downloaded files from temp directory: %s/", len(local_files), temp_dir)
+    removed_count = 0
+    for local_file in local_files:
+        try:
             os.remove(local_file.path)
-    except Exception as error:
-        logging.error("Error removing downloaded files: %s", error)
-    logging.info("Removed downloaded files from temp directory: %s/", temp_dir)
+            removed_count += 1
+        except Exception as error:
+            logger.error("Error removing downloaded file %s: %s", local_file.path, error)
+
+    logger.info("Removed %d/%d downloaded files from temp directory: %s/", removed_count, len(local_files), temp_dir)

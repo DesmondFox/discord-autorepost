@@ -5,8 +5,12 @@ import discord
 from telegram import Bot
 
 from bot.config import ConfigError, load_config
+from bot.logging_config import configure_logging
 from bot.repost_service import RepostService
 from bot.telegram_sender import TelegramSender
+
+
+logger = logging.getLogger(__name__)
 
 
 def create_discord_client() -> discord.Client:
@@ -16,13 +20,14 @@ def create_discord_client() -> discord.Client:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.DEBUG)
-
     try:
         config = load_config()
     except ConfigError as error:
-        logging.error("%s", error)
+        configure_logging("ERROR")
+        logger.error("%s", error)
         sys.exit(1)
+
+    configure_logging(config.log_level)
 
     client = create_discord_client()
     nsfw_telegram_sender = TelegramSender(
@@ -43,9 +48,9 @@ def main() -> None:
 
     @client.event
     async def on_ready() -> None:
-        logging.info("Logged in to Discord as %s", client.user)
-        logging.info("NSFW Discord channels: %s", config.discord_nsfw_channel_ids)
-        logging.info("SFW Discord channels: %s", config.discord_sfw_channel_ids)
+        logger.info("Logged in to Discord as %s", client.user)
+        logger.info("NSFW Discord channels: %s", config.discord_nsfw_channel_ids)
+        logger.info("SFW Discord channels: %s", config.discord_sfw_channel_ids)
 
     @client.event
     async def on_message(message: discord.Message) -> None:

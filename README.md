@@ -85,6 +85,7 @@ TELEGRAM_SFW_CHAT_ID=your_sfw_telegram_chat_id
 DISCORD_BOT_TOKEN=your_discord_bot_token
 DISCORD_NSFW_CHANNEL_IDS=123456789012345678
 DISCORD_SFW_CHANNEL_IDS=987654321098765432
+LOG_LEVEL=INFO
 ```
 
 ### Environment Variables
@@ -97,6 +98,7 @@ DISCORD_SFW_CHANNEL_IDS=987654321098765432
 | `DISCORD_BOT_TOKEN` | Yes | Token for the Discord bot that reads messages. |
 | `DISCORD_NSFW_CHANNEL_IDS` | No | Comma-separated list of Discord NSFW channel IDs. Messages from these channels repost only to the NSFW Telegram chat. |
 | `DISCORD_SFW_CHANNEL_IDS` | No | Comma-separated list of Discord SFW channel IDs. Messages from these channels repost to both Telegram chats. |
+| `LOG_LEVEL` | No | Logging level. Defaults to `INFO`. Valid values: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`. |
 
 Do not commit real `.env` files or tokens.
 
@@ -142,7 +144,7 @@ docker compose down
 - File names are reused as downloaded. If Discord sends duplicate attachment names at the same time, later files may overwrite earlier files in `temp/`.
 - Telegram media groups can contain at most 10 items. If more than 10 media files are found, the bot sends them one by one.
 - Captions are attached to the first media item in a media group. Documents are sent separately and currently receive the same caption.
-- Logging is set to `DEBUG` at startup.
+- Logging writes to stdout/stderr with timestamps, levels, and module names. Set `LOG_LEVEL=DEBUG` for more detailed troubleshooting.
 
 ## Troubleshooting
 

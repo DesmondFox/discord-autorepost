@@ -1,6 +1,6 @@
 import pytest
 
-from bot.config import ConfigError, load_config, parse_allowed_channel_ids
+from bot.config import ConfigError, load_config, parse_allowed_channel_ids, parse_log_level
 
 
 def test_parse_allowed_channel_ids() -> None:
@@ -17,6 +17,20 @@ def test_parse_allowed_channel_ids_invalid_value() -> None:
         parse_allowed_channel_ids("123,not-a-channel")
 
 
+def test_parse_log_level_defaults_to_info() -> None:
+    assert parse_log_level(None) == "INFO"
+    assert parse_log_level("") == "INFO"
+
+
+def test_parse_log_level_normalizes_valid_value() -> None:
+    assert parse_log_level("debug") == "DEBUG"
+
+
+def test_parse_log_level_rejects_invalid_value() -> None:
+    with pytest.raises(ConfigError):
+        parse_log_level("verbose")
+
+
 def test_load_config_requires_tokens() -> None:
     with pytest.raises(ConfigError):
         load_config({})
@@ -31,6 +45,7 @@ def test_load_config() -> None:
             "DISCORD_BOT_TOKEN": "discord-token",
             "DISCORD_NSFW_CHANNEL_IDS": "123",
             "DISCORD_SFW_CHANNEL_IDS": "456",
+            "LOG_LEVEL": "warning",
         }
     )
 
@@ -40,6 +55,7 @@ def test_load_config() -> None:
     assert config.discord_bot_token == "discord-token"
     assert config.discord_nsfw_channel_ids == {123}
     assert config.discord_sfw_channel_ids == {456}
+    assert config.log_level == "WARNING"
 
 
 def test_load_config_allows_empty_discord_channel_lists() -> None:
