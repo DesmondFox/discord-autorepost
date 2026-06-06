@@ -3,15 +3,18 @@ import logging
 from telegram import Bot, InputMediaAnimation, InputMediaPhoto, InputMediaVideo
 
 
+logger = logging.getLogger(__name__)
+
+
 class TelegramSender:
     def __init__(self, bot: Bot, chat_id: str):
         self.bot = bot
         self.chat_id = str(chat_id)
 
     async def send_text(self, content: str) -> None:
-        logging.info("Sending text message")
+        logger.info("Sending text message to Telegram chat_id=%s", self.chat_id)
         await self.bot.send_message(chat_id=self.chat_id, text=content)
-        logging.info("Successfully sent text message")
+        logger.info("Successfully sent text message to Telegram chat_id=%s", self.chat_id)
 
     async def send_media_and_documents(
         self,
@@ -21,10 +24,11 @@ class TelegramSender:
         file_objects: list,
     ) -> None:
         try:
-            logging.info(
-                "Preparing to send %d media files and %d documents to Telegram",
+            logger.info(
+                "Preparing to send %d media files and %d documents to Telegram chat_id=%s",
                 len(media),
                 len(documents),
+                self.chat_id,
             )
 
             if media:
@@ -36,26 +40,25 @@ class TelegramSender:
                 await self.send_text(content)
 
             for file_obj, filename in documents:
-                logging.info("Sending document: %s", filename)
+                logger.info("Sending document to Telegram chat_id=%s filename=%s", self.chat_id, filename)
                 await self.bot.send_document(
                     chat_id=self.chat_id,
                     document=file_obj,
                     filename=filename,
                     caption=content,
                 )
-                logging.info("Successfully sent document: %s", filename)
+                logger.info("Successfully sent document to Telegram chat_id=%s filename=%s", self.chat_id, filename)
         except Exception as error:
-            logging.error("Sending to Telegram failed: %s", error)
-            logging.error("Exception details:", exc_info=True)
+            logger.exception("Sending to Telegram failed for chat_id=%s: %s", self.chat_id, error)
         finally:
             try:
                 for file_obj in file_objects:
                     file_obj.close()
             except Exception as error:
-                logging.error("Closing files failed: %s", error)
+                logger.error("Closing files failed: %s", error)
 
     async def send_attachment_urls(self, attachments, content: str) -> None:
-        logging.warning("No files downloaded successfully, attempting to send URLs directly")
+        logger.warning("No files downloaded successfully, attempting to send attachment URLs directly")
         for index, attachment in enumerate(attachments):
             try:
                 current_caption = content if index == 0 else None
@@ -79,13 +82,16 @@ class TelegramSender:
                         filename=attachment.filename,
                         caption=current_caption,
                     )
-                logging.info("Successfully sent URL directly: %s", attachment.filename)
+                logger.info("Successfully sent attachment URL directly: %s", attachment.filename)
             except Exception as error:
-                logging.error("Failed to send URL directly for %s: %s", attachment.filename, error)
-                logging.error("Exception details:", exc_info=True)
+                logger.exception("Failed to send attachment URL directly for %s: %s", attachment.filename, error)
 
     async def _send_single_media(self, media_item, content: str | None) -> None:
-        logging.info("Sending single media file of type: %s", type(media_item).__name__)
+        logger.info(
+            "Sending single media file to Telegram chat_id=%s type=%s",
+            self.chat_id,
+            type(media_item).__name__,
+        )
 
         if isinstance(media_item, InputMediaAnimation):
             await self.bot.send_animation(
@@ -116,20 +122,20 @@ class TelegramSender:
                 caption=content,
             )
 
-        logging.info("Successfully sent single media file")
+        logger.info("Successfully sent single media file to Telegram chat_id=%s", self.chat_id)
 
     async def _send_media_group(self, media: list, content: str) -> None:
-        logging.info("Sending media group with %d files", len(media))
+        logger.info("Sending media group to Telegram chat_id=%s files=%d", self.chat_id, len(media))
 
         if len(media) > 10:
-            logging.error("Too many media files for media group (max 10): %d", len(media))
+            logger.error("Too many media files for media group (max 10): %d", len(media))
             for index, single_media in enumerate(media):
                 try:
                     current_caption = content if index == 0 else None
                     await self._send_single_media(single_media, current_caption)
-                    logging.info("Successfully sent individual media file %d/%d", index + 1, len(media))
+                    logger.info("Successfully sent individual media file %d/%d", index + 1, len(media))
                 except Exception as error:
-                    logging.error("Failed to send individual media file %d: %s", index + 1, error)
+                    logger.error("Failed to send individual media file %d: %s", index + 1, error)
         else:
             await self.bot.send_media_group(chat_id=self.chat_id, media=media)
-            logging.info("Successfully sent media group")
+            logger.info("Successfully sent media group to Telegram chat_id=%s", self.chat_id)
